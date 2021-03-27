@@ -1,17 +1,6 @@
-import sys
 from collections import deque
-
-line = list(map(lambda x: int(x), input().split()))
-t = line[0] # number of test cases
-n = line[1] # length of list
-q = line[2] # total number of attempts
-
-def partition(arr, chunk_size):
-    return [arr[i:i + chunk_size] for i in range(0, len(arr), chunk_size)]
-
-def get_median(arr):
-    print(*arr)
-    return int(input())
+global q
+q = 0
 
 def insert_from_rhs(sort, nxt, pos):
     if pos == 0:
@@ -47,10 +36,30 @@ def insert_from_rhs(sort, nxt, pos):
 
     return sort  
 
-# This is not optimal, since we aren't really merging
-# by taking the head of one list and the other one at a time
-# There's probably a nice way of doing this, and merge_smart2 in problem4_utils
-# tries this, but to no avail.
+def partition(arr, chunk_size):
+    return [arr[i:i + chunk_size] for i in range(0, len(arr), chunk_size)]
+
+def get_median(arr):
+    global q
+    q += 1
+    arr_copy = arr.copy()
+    arr_copy.sort()
+    return arr_copy[1]
+
+def merge_basic(left, right):
+    if not left:
+        return right
+
+    if not right:
+        return left
+
+    both = left.copy()
+
+    for item in right:
+        both = insert_from_rhs(both, item, 0)
+
+    return both
+
 def merge_smart(left, right):
     if not left:
         return right
@@ -97,10 +106,69 @@ def merge_smart(left, right):
 
     return both
 
-def solve_merge():
-    sample = list(range(1, n+1))
+def merge_smart2(left, right): # Not working :(
+    if not left:
+        return right
 
-    # Attempt some kind of merge sort
+    if not right:
+        return left
+
+    if len(left) == 1:
+        return insert_from_rhs(right, left[0], 0)
+
+    if len(right) == 1:
+        return insert_from_rhs(left, right[0], 0)
+
+    # Make sure left is always smaller
+    if len(left) > len(right):
+        tmp = left
+        left = right
+        right = tmp
+
+    # Start merging by getting 2 elems from lhs and one from rhs
+    leftq = deque(left)
+    rightq = deque(right)
+    both = []
+
+    fst = leftq.popleft()
+    snd = leftq.popleft()
+    trd = rightq.popleft()
+
+    median = get_median([fst, snd, trd])
+    if median == fst:
+        both = [trd, fst, snd]
+    elif median == trd:
+        both = [fst, trd, snd]
+    else:
+        both = [fst, snd, trd]
+
+    # Drain all elements from leftq first
+    while leftq:
+        l = leftq.popleft()
+        r = rightq.popleft()
+        last = both[-1]
+
+        median = get_median([l, r, last])
+        if median == l:
+            both.insert(-1, r)
+            both.insert(-1, l)
+            both = insert_from_rhs(both, None, 2)
+        elif median == r:
+            both.insert(-1, l)
+            both.insert(-1, r)
+        elif median == last:
+            both.insert(-1, l)
+            both.append(r)
+
+    while rightq:
+        nxt = rightq.popleft()
+        both = insert_from_rhs(both, nxt, 0)
+
+    return both
+
+if __name__ == "__main__":
+    sample = [45, 28, 35, 38, 31, 26, 10, 23, 42, 49, 14, 39, 7, 27, 17, 29, 43, 30, 24, 25, 2, 41, 11, 50, 32, 46, 47, 21, 8, 13, 1, 20, 18, 36, 19, 33, 37, 3, 40, 9, 34, 6, 5, 15, 44, 12, 4, 22, 48, 16]
+
     partitions = partition(sample, 3)
 
     for idx, part in enumerate(partitions):
@@ -122,37 +190,16 @@ def solve_merge():
                 part[-3] = last
                 part[-2] = last3
                 part[-1] = last2
-    
+
     while len(partitions) != 1:
         new_partitions = []
         for i in range(0, len(partitions), 2):
             if i+1 != len(partitions):
-                new_partitions.append(merge_smart(partitions[i], partitions[i+1]))
+                new_partitions.append(merge_smart2(partitions[i], partitions[i+1]))
             else:
                 new_partitions.append(partitions[i])
         partitions = new_partitions
-    
-    print(*partitions[0])
-    assert(input() == '1')
 
-# "Insertion" sort
-def solve_insertion():
-    sort = []
-    median = get_median([1, 2, 3])
+    print("DONE:", *partitions[0])
 
-    if median == 2:
-        sort = [1, 2, 3]
-    elif median == 1:
-        sort = [2, 1, 3]
-    elif median == 3:
-        sort = [1, 3, 2]
-
-    while len(sort) != n:
-        nxt = len(sort) + 1
-        insert_from_rhs(sort, nxt, 0)
-
-    print(*sort)
-    assert(input() == '1')
-
-for i in range(t):
-    solve_insertion()
+    print("q: ", q)
